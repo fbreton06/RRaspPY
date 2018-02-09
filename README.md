@@ -55,3 +55,12 @@ The smbus.py file is a good sample to start.
 4) host.Execute("read_byte(0x33)", bus)
     This line will execute "bus.read_byte(0x33)" command in the device context and returns the bytes string read.
 5) At the end host.RemoveHandle(bus) is called to clean remote instance
+
+Files descriptions:
+  - helper.py       Contains useful class or function for the module
+  - serialize.py    Dedicated to Encode/Decode stream to/from socket
+  - common.py       Just common definitions between the host and the device sides
+  - device.py       Execute "host" command in the device context and send callback event to the "host"
+  - host.py         Send commands to the device and listening callback event
+  
+The most of them have autotest to check their content: (see __name__=="__main__" section at the bottom of the code)

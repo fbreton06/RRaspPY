@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8 
 import struct, types
 
 from helper import Debug
@@ -33,8 +32,11 @@ TYPE_CALLBACK = 0x68
 MARSHAL_SUPPORTED_TYPES = (types.StringType, types.BooleanType, types.IntType, types.LongType, types.FloatType, \
                            types.DictType, types.TupleType, types.ListType, types.NoneType, types.UnicodeType)
 
+verbosity = Debug.ERROR
+#verbosity = Debug.DEBUG
+
 class Encode(Debug):
-    def __init__(self, kind, verbosity=Debug.ERROR):# DEBUG or ERROR
+    def __init__(self, kind):
         Debug.__init__(self, verbosity)
         self.__byteorder = BYTE_ORDER
         self.__data = self.__pack("B", kind)
@@ -43,14 +45,14 @@ class Encode(Debug):
         return str(self)
     
     def __str__(self):
-        return " ".join(["%02X" % ord(c) for c in self.__data])
+        return self.getHexStream(self.__data)
 
     def __pack(self, fmt, value):
         if type(value) == types.ListType:
             data = struct.pack(self.__byteorder + fmt, *value)
         else:
             data = struct.pack(self.__byteorder + fmt, value)
-        self.TRACE(self.DEBUG, "%s(%s): %s\n", self.__byteorder + fmt, str(value), ["0x%02X" % ord(x) for x in data])
+        self.DUMPHEX("%s(%s): " % (self.__byteorder + fmt, str(value)), data, self.DEBUG)
         return data
 
     def __addType(self, arg):   
@@ -111,7 +113,7 @@ class Encode(Debug):
         return self.__data
 
 class Decode(Debug):
-    def __init__(self, data, verbosity=Debug.ERROR):# DEBUG or ERROR
+    def __init__(self, data):
         Debug.__init__(self, verbosity)
         self.__byteorder = BYTE_ORDER
         self.args = self.__getArgs(data)
@@ -213,3 +215,4 @@ if __name__ == "__main__":
     assert dec.args[7] == t, "Tuple mismatch: got %s expected %s" % (dec.args[7], t)
     assert dec.args[8] == d, "Dict mismatch: got %s expected %s" % (dec.args[8], d)
     print "Check OK!"
+    raw_input("Appuyer sur entree pour continuer")

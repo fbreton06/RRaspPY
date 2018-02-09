@@ -1,25 +1,30 @@
 #!/usr/bin/env python
-# coding: utf-8 
 import socket, threading, time
 
-from helper import Debug
+from helper import Debug, GetIPAddress
 from serialize import *
-from protocol import *
+from common import *
 
-# Wireshark filter
+# Wireshark filter to spy network interface: eno1
 # (tcp.srcport == 8080 or tcp.srcport == 7070 or tcp.dstport == 8080 or tcp.dstport == 7070) and tcp.flags & 0x8
 
 verbosity = Debug.ERROR
 #verbosity = Debug.DEBUG
 #verbosity = Debug.DUMP
 
+# These values should be yours
+DEFAULT_HOST_PORT = 7070
+DEFAULT_DEVICE_PORT = 8080
+
 local= False
 if local:
-    CLIENT_ADDRESS = ("", 7070)
-    SERVER_ADDRESS = ("", 8080)
+    # True only to test/debug client/server mechanism from the same machine
+    HOST_TUPLE = ["", DEFAULT_HOST_PORT]
+    DEVICE_TUPLE = ["", DEFAULT_DEVICE_PORT]
 else:
-    CLIENT_ADDRESS = (GetIPAddress("eno1"), 7070)
-    SERVER_ADDRESS = ("192.168.0.40", 8080)
+    # These values should be yours
+    HOST_TUPLE = [GetIPAddress("eno1"), DEFAULT_HOST_PORT]
+    DEVICE_TUPLE = ["192.168.0.40", DEFAULT_DEVICE_PORT]
 
 __lockCb = threading.RLock()
 __callbacks = dict()
@@ -28,7 +33,7 @@ __clientThread = None
 def LocalAddNewCallback(cbId, cbFunction):
     global __lockCb, __callbacks, __clientThread
     if __clientThread == None:
-        __clientThread = CallbackThread(*CLIENT_ADDRESS)
+        __clientThread = CallbackThread(*HOST_TUPLE)
     with __lockCb:
         if __callbacks.has_key(cbId):
             raise ValueError, "Callback ID already used: %s" % cbId
@@ -65,7 +70,7 @@ def LocalGetCallback(cbId):
     return cbFunction
 
 class CallbackThread(threading.Thread, Debug):
-    def __init__(self, address="", port=7070):
+    def __init__(self, address, port):
         threading.Thread.__init__(self)
         Debug.__init__(self, verbosity)
         self.__socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -139,7 +144,7 @@ class ServerThread(threading.Thread, Debug):
         self.__socket.close()
 
 class RequestThread(threading.Thread, Debug):
-    def __init__(self, address="", port=8080):
+    def __init__(self, address, port):
         threading.Thread.__init__(self)
         Debug.__init__(self, verbosity)
         self.__event = threading.Event()
@@ -148,7 +153,7 @@ class RequestThread(threading.Thread, Debug):
 
     def send(self, data):
         self.__result = None
-        self.TRACE(Debug.DUMP, "RequestThread: SEND %s\n", " ".join(["%02X " % ord(c) for c in data]))
+        self.DUMPHEX("RequestThread: SEND ", data)
         self.__socket.send(data)
         self.TRACE(Debug.DEBUG, "RequestThread: Request to device sent (%d)\n", id(data))
         self.start()
@@ -162,7 +167,7 @@ class RequestThread(threading.Thread, Debug):
         try:
             data = self.__socket.recv(SOCKET_SIZE_MAX)
             if data != "":
-                self.TRACE(Debug.DUMP, "RequestThread: RECEIVE %s\n", " ".join(["%02X" % ord(c) for c in data]))
+                self.DUMPHEX("RequestThread: RECEIVE ", data)
                 dec = Decode(data)
             else:
                 dec = Decode(UNKNOWN)
@@ -195,27 +200,27 @@ def ImportModule(module, name="", package=None):
     enc = Encode(CMD_IMPORT)
     enc.addType(module, name, package)
     debug.TRACE(Debug.DEBUG, "ImportModule(%s, %s, %s) request\n", module, name, package)
-    return RequestThread(*SERVER_ADDRESS).send(enc.getData(SOCKET_SIZE_MAX))
+    return RequestThread(*DEVICE_TUPLE).send(enc.getData(SOCKET_SIZE_MAX))
 
 def RemoveHandle(handle):
     enc = Encode(CMD_REMOVE_HANDLE)
     enc.addHandle(handle)
     debug.TRACE(Debug.DEBUG, "RemoveHandle(%X) request\n", handle)
-    return RequestThread(*SERVER_ADDRESS).send(enc.getData(SOCKET_SIZE_MAX))
+    return RequestThread(*DEVICE_TUPLE).send(enc.getData(SOCKET_SIZE_MAX))
 
 def RemoveCallback(cbId):
     enc = Encode(CMD_REMOVE_CALLBACK)
     enc.addCallback(cbId)
     LocalRemoveCallback(cbId)
     debug.TRACE(Debug.DEBUG, "RemoveCallback(%s) request\n", cbId)
-    return RequestThread(*SERVER_ADDRESS).send(enc.getData(SOCKET_SIZE_MAX))
+    return RequestThread(*DEVICE_TUPLE).send(enc.getData(SOCKET_SIZE_MAX))
 
 def RemoveAllCallback(idName):
     enc = Encode(CMD_REMOVE_ALL_CALLBACK)
     enc.addCallback(idName)
     LocalRemoveAllCallback(idName)
     debug.TRACE(Debug.DEBUG, "RemoveAllCallback(%s) request\n", idName)
-    return RequestThread(*SERVER_ADDRESS).send(enc.getData(SOCKET_SIZE_MAX))
+    return RequestThread(*DEVICE_TUPLE).send(enc.getData(SOCKET_SIZE_MAX))
 
 def Execute(command, handle=None, callback=None):
     enc = Encode(CMD_EXECUTE)
@@ -232,9 +237,9 @@ def Execute(command, handle=None, callback=None):
         enc.addType(None)
     enc.addType(command)
     debug.TRACE(Debug.DEBUG, "Execute(%s, %s, %s) request\n", command, handle, callback)
-    return RequestThread(*SERVER_ADDRESS).send(enc.getData(SOCKET_SIZE_MAX))
+    return RequestThread(*DEVICE_TUPLE).send(enc.getData(SOCKET_SIZE_MAX))
 
-#Test purpose only
+# Test purpose only
 def Test(*args):
     print "Args:", args
 
@@ -277,4 +282,4 @@ if __name__ == "__main__":
         Execute("write_byte(0x27, 0)", busHandle)
         RemoveHandle(busHandle)
     print "Done"
-    #raw_input("Appuyer sur entree pour continuer")
+    raw_input("Appuyer sur entree pour continuer")

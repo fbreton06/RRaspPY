@@ -1,5 +1,5 @@
 import sys, os, time
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+sys.path.append(os.path.pardir)
 import host
 
 host.ImportModule(".GPIO", "GPIO", "RPi")
@@ -134,4 +134,4 @@ if __name__ == '__main__':
     time.sleep(duration)
     GPIO.cleanup()
     print "Done"
-    #raw_input("Appuyer sur entree pour continuer")
+    raw_input("Appuyer sur entree pour continuer")

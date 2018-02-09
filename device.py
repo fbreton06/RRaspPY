@@ -1,23 +1,27 @@
 #!/usr/bin/env python
-# coding: utf-8 
-import socket, threading
-from importlib import import_module
+import socket, threading, sys
+from importlib import import_module # Use to import dynamically any python module
 
-from helper import Debug
+from helper import Debug, GetIPAddress
 from serialize import *
-from protocol import *
+from common import *
 
-#verbosity = Debug.ERROR
+verbosity = Debug.ERROR
 #verbosity = Debug.DEBUG
-verbosity = Debug.DUMP
+#verbosity = Debug.DUMP
+
+# These values should be yours
+DEFAULT_HOST_PORT = 7070
+DEFAULT_DEVICE_PORT = 8080
 
 local = True
 if local:
-    CLIENT_ADDRESS = ("", 7070)
-    SERVER_ADDRESS = ("", 8080)
+    # True only to test/debug client/server mechanism from the same machine
+    HOST_TUPLE = ("", DEFAULT_HOST_PORT)
+    DEVICE_TUPLE = ("", DEFAULT_DEVICE_PORT)
 else:
-    CLIENT_ADDRESS = ("192.168.0.32", 7070)
-    SERVER_ADDRESS = (GetIPAddress("wlan0"), 8080)
+    HOST_TUPLE = ("192.168.0.32", DEFAULT_HOST_PORT)
+    DEVICE_TUPLE = (GetIPAddress("wlan0"), DEFAULT_DEVICE_PORT)
 
 __lockHdl = threading.RLock()
 __instances = dict()
@@ -95,7 +99,7 @@ class CallbackThread(threading.Thread, Debug):
         enc = Encode(CMD_CALLBACK)
         enc.addCallback(self.__cbId)
         enc.addType(*args)     
-        EventCallbackThread(self.__cbId, *CLIENT_ADDRESS).notification(enc.getData(SOCKET_SIZE_MAX))
+        EventCallbackThread(self.__cbId, *HOST_TUPLE).notification(enc.getData(SOCKET_SIZE_MAX))
 
     def run(self):
         self.TRACE(self.DEBUG, "CallbackThread: Callback %s thread started\n", self.__cbId)
@@ -108,7 +112,7 @@ class CallbackThread(threading.Thread, Debug):
         self.__active = False
 
 class EventCallbackThread(threading.Thread, Debug):
-    def __init__(self, cbId, address="", port=7070):
+    def __init__(self, cbId, address, port):
         threading.Thread.__init__(self)
         Debug.__init__(self, verbosity)
         self.__event = threading.Event()
@@ -117,7 +121,7 @@ class EventCallbackThread(threading.Thread, Debug):
         self.__socket.connect((address, port))
 
     def notification(self, data):
-        self.TRACE(Debug.DUMP, "EventCallbackThread: NOTIFICATION %s\n", " ".join(["%02X " % ord(c) for c in data]))
+        self.DUMPHEX("EventCallbackThread: NOTIFICATION ", data)
         self.__socket.send(data)
         self.TRACE(Debug.DEBUG, "EventCallbackThread: Notification to host sent (%d)\n", id(data))
         self.start()
@@ -130,7 +134,7 @@ class EventCallbackThread(threading.Thread, Debug):
         try:
             data = self.__socket.recv(SOCKET_SIZE_MAX)
             if data != "":
-                self.TRACE(Debug.DUMP, "EventCallbackThread: RECEIVE %s\n", " ".join(["%02X" % ord(c) for c in data]))
+                self.DUMPHEX("EventCallbackThread: RECEIVE ", data)
                 dec = Decode(data)
             else:
                 dec = Decode(UNKNOWN)
@@ -276,7 +280,7 @@ class ClientThread(threading.Thread, Debug):
 
 debug = Debug(verbosity)
 
-def Server(address="", port=8080):
+def Server(address, port):
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serverSocket.settimeout(30)
@@ -310,5 +314,13 @@ class Test:
         self.cbTest.extend(args)
         threading.Timer(self.delay_s, self.__callback).start()
 
-if __name__ == "__main__":    
-    Server(*SERVER_ADDRESS)
+if __name__ == "__main__":
+    if len(sys.argv) < 3 or len(sys.argv) > 5:
+        raise ValueError, "Unexpected arguments: please read the README.md file!"
+    DEVICE_TUPLE[0] = sys.argv[1]
+    HOST_TUPLE[0] = sys.argv[2]
+    if len(sys.argv) > 3:
+        DEVICE_TUPLE[1] = sys.argv[3]
+        if len(sys.argv) > 4:
+            HOST_TUPLE[1] = sys.argv[4]
+    Server(*DEVICE_TUPLE)

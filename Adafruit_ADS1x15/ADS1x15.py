@@ -1,5 +1,5 @@
 import sys, os
-sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+sys.path.append(os.path.pardir)
 import host
 
 host.ImportModule(".ADS1x15", "ADS1x15", "Adafruit_ADS1x15")
@@ -20,4 +20,4 @@ if __name__ == '__main__':
     for i in range(4):
         print "ADC value (pin %d) = %d" % (i, can.read_adc(i))
     del can
-    #raw_input("Appuyer sur entree pour continuer")
+    raw_input("Appuyer sur entree pour continuer")
