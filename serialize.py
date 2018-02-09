@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import struct, types
 
-from helper import Debug
+from common import Debug
 
 # convert (big-endian) ">" or "!"
 # convert (little-endian) "<"
