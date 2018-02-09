@@ -11,14 +11,15 @@ I've only tested it on Ubuntu64 system but it should work on other system like W
   - common.py
   - device.py
 3) From your raspberry (probably throught your SSH connection) just start the server like that:
-$> python ./server.py DEVICE_ADDRESS HOST_ADDRESS [DEVICE_PORT=8080] [HOST_PORT=7070]
+$> python ./server.py HOST_ADDRESS [DEVICE_ADDRESS] [HOST_PORT=7070] [DEVICE_PORT=8080]
 Where:
-  - DEVICE_ADDRESS  It should be the interface used by your raspberry to expose the server.
-                    Probably something like: wlan0 or eth0... for linux based system.
-                    If the detection doesn't work you could enter directly the IP address of the network interface
-  - HOST_ADDRESS    It should be IP address of the network interface used by your host to execute you python application.
-  - DEVICE_PORT [optional] Is the port number used by the raspberry server
-  - HOST_PORT   [optional] Is the port number used by the host
+  - HOST_ADDRESS              It should be IP address of the network interface used by your host to execute you python application.
+  - DEVICE_ADDRESS [optional] By default on linux system it is the IP address of the "eth0" interface
+                              It should be the interface used by your raspberry to expose the server.
+                              Probably something like: wlan0 or eth0... for linux based system.
+                              If the detection doesn't work you could enter directly the IP address of the network interface
+  - HOST_PORT      [optional] Is the port number used by the host
+  - DEVICE_PORT    [optional] Is the port number used by the raspberry server
 
 4) You need to do the same thing dirrectly in the host.py file:
     HOST_TUPLE = (HOST_ADDRESS, 7070)
@@ -28,7 +29,7 @@ local variable should be False. It exists only to test/debug mechanism with DEVI
 5) After that you could run your python script from any python interpreter like it was located on your raspberry.
 (Personally I recommand PyScripter for Windows users or Wing for all users especially if you debug multi-threading code)
 Of course to be able to do that all interfaces that you'll use should be simulated by your host throught commands located in the host module.
-For the moment SMBus, RPi.GPIO, OneWire and Adafruit_ADS1x15 are supported.
+For the moment SMBus, RPi.GPIO and Adafruit_ADS1x15 are supported.
 Feel free to improve this set of hardware support. E.g. Adafruit_ADS1x15 support actually only the ADS1115, but it'll be easy to add the
 ADS1015 chip support. 
 Maybe you'll encounter few issues with variables that is not defined by the RPi.GPIO stub. But in the most of case it should work.

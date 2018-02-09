@@ -14,14 +14,14 @@ verbosity = Debug.ERROR
 DEFAULT_HOST_PORT = 7070
 DEFAULT_DEVICE_PORT = 8080
 
-local = True
+local = False
 if local:
     # True only to test/debug client/server mechanism from the same machine
-    HOST_TUPLE = ("", DEFAULT_HOST_PORT)
-    DEVICE_TUPLE = ("", DEFAULT_DEVICE_PORT)
+    HOST_TUPLE = ["", DEFAULT_HOST_PORT]
+    DEVICE_TUPLE = ["", DEFAULT_DEVICE_PORT]
 else:
-    HOST_TUPLE = ("192.168.0.32", DEFAULT_HOST_PORT)
-    DEVICE_TUPLE = (GetIPAddress("wlan0"), DEFAULT_DEVICE_PORT)
+    HOST_TUPLE = ["192.168.0.32", DEFAULT_HOST_PORT]
+    DEVICE_TUPLE = [GetIPAddress("eth0"), DEFAULT_DEVICE_PORT]
 
 __lockHdl = threading.RLock()
 __instances = dict()
@@ -285,6 +285,7 @@ def Server(address, port):
     serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serverSocket.settimeout(30)
     serverSocket.bind((address, port))
+    debug.TRACE(Debug.INFO, "Server started on %s:%d\nUse CTRL+C to stop it.", address, port)
     active = True
     while active:
         try:
@@ -315,12 +316,13 @@ class Test:
         threading.Timer(self.delay_s, self.__callback).start()
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3 or len(sys.argv) > 5:
+    if len(sys.argv) < 2 or len(sys.argv) > 5:
         raise ValueError, "Unexpected arguments: please read the README.md file!"
-    DEVICE_TUPLE[0] = sys.argv[1]
-    HOST_TUPLE[0] = sys.argv[2]
-    if len(sys.argv) > 3:
-        DEVICE_TUPLE[1] = sys.argv[3]
-        if len(sys.argv) > 4:
-            HOST_TUPLE[1] = sys.argv[4]
+    HOST_TUPLE[0] = sys.argv[1]
+    if len(sys.argv) > 2:
+        DEVICE_TUPLE[0] = sys.argv[2]
+        if len(sys.argv) > 3:
+            HOST_TUPLE[1] = sys.argv[3]
+            if len(sys.argv) > 4:
+                DEVICE_TUPLE[1] = sys.argv[4]
     Server(*DEVICE_TUPLE)
