@@ -21,7 +21,7 @@ if local:
     DEVICE_TUPLE = ["", DEFAULT_DEVICE_PORT]
 else:
     # These values should be yours
-    HOST_TUPLE = [GetIPAddress("eno1"), DEFAULT_HOST_PORT]
+    HOST_TUPLE = [GetIPAddress("wlp2s0"), DEFAULT_HOST_PORT]# eno1 wlp2s0
     DEVICE_TUPLE = ["192.168.0.40", DEFAULT_DEVICE_PORT]
 
 __lockCb = threading.RLock()

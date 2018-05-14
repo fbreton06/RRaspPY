@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import socket, threading, sys
+import socket, threading, sys, os
 from importlib import import_module # Use to import dynamically any python module
 from serialize import *
 from common import *
@@ -19,7 +19,10 @@ if local:
     DEVICE_TUPLE = ["", DEFAULT_DEVICE_PORT]
 else:
     HOST_TUPLE = ["192.168.0.32", DEFAULT_HOST_PORT]
-    DEVICE_TUPLE = [GetIPAddress("eth0"), DEFAULT_DEVICE_PORT]
+    try:
+        DEVICE_TUPLE = [GetIPAddress("eth0"), DEFAULT_DEVICE_PORT]
+    except:
+        DEVICE_TUPLE = [GetIPAddress("wlan0"), DEFAULT_DEVICE_PORT]
 
 __lockHdl = threading.RLock()
 __instances = dict()
@@ -192,7 +195,7 @@ class ClientThread(threading.Thread, Debug):
                 self.TRACE(self.DEBUG, "ClientThread: Import %s %s (Already imported!)\n", module, name)
             self.__sendOK()
         except Exception as err:
-            self.__sendError(str(err))
+            self.__sendError("Import \"%s::%s as %s\": %s" % (package, module, name, err))
 
     def __removeHandle(self, handle):
         LocalRemoveInstance(handle)
@@ -228,7 +231,7 @@ class ClientThread(threading.Thread, Debug):
                 result = eval(command)
             self.__sendResult(result)
         except Exception as err:
-            self.__sendError(str(err))
+            self.__sendError("Execute \"%s->%s (Callback=%s\": %s" % (handle, command, cbId, err))
 
     def run(self):
         self.TRACE(Debug.DEBUG, "ClientThread: Wait data from host\n")
@@ -279,11 +282,11 @@ class ClientThread(threading.Thread, Debug):
 debug = Debug(verbosity)
 
 def Server(address, port):
+    debug.TRACE(Debug.INFO, "Server started on %s:%d\nUse CTRL+C to stop it.", address, port)
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serverSocket.settimeout(30)
     serverSocket.bind((address, port))
-    debug.TRACE(Debug.INFO, "Server started on %s:%d\nUse CTRL+C to stop it.", address, port)
     active = True
     while active:
         try:
@@ -314,13 +317,31 @@ class Test:
         threading.Timer(self.delay_s, self.__callback).start()
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or len(sys.argv) > 5:
-        raise ValueError, "Unexpected arguments: please read the README.md file!"
-    HOST_TUPLE[0] = sys.argv[1]
-    if len(sys.argv) > 2:
-        DEVICE_TUPLE[0] = sys.argv[2]
-        if len(sys.argv) > 3:
-            HOST_TUPLE[1] = sys.argv[3]
-            if len(sys.argv) > 4:
-                DEVICE_TUPLE[1] = sys.argv[4]
+    # First remove files already needed by the host side, to prevent import conflicts
+    os.system("rm -frd Adafruit_ADS1x15")
+    os.system("rm -frd RPi")
+    os.system("rm -f *.pyc")
+    os.system("rm -f smbus.py")
+    os.system("rm -f host.py")
+    while True:
+        arg = sys.argv.pop(0)
+        if arg.endswith(os.path.basename(__file__)):
+            break
+    if sys.argv[0].lower().startswith("-"):
+        verbosity = sys.argv.pop(0)
+        if verbosity.lower() in ("-vv", "-v2", "-dump"):
+            debug.debug_level = debug.DUMP
+        elif verbosity.lower() in ("-v", "-v1", "-dbg"):
+            debug.debug_level = debug.DEBUG
+        else:
+            raise ValueError, "Unexpected arguments: (options: [-dbg|-dump]) HOST_ADDRESS [DEVICE_ADDRESS] [HOST_PORT=7070] [DEVICE_PORT=8080]"
+    if len(sys.argv) < 1 or len(sys.argv) > 4:
+        raise ValueError, "Unexpected arguments: HOST_ADDRESS [DEVICE_ADDRESS] [HOST_PORT=7070] [DEVICE_PORT=8080]"
+    HOST_TUPLE[0] = sys.argv[0]
+    if len(sys.argv) > 1:
+        DEVICE_TUPLE[0] = sys.argv[1]
+        if len(sys.argv) > 2:
+            HOST_TUPLE[1] = sys.argv[2]
+            if len(sys.argv) > 3:
+                DEVICE_TUPLE[1] = sys.argv[3]
     Server(*DEVICE_TUPLE)

@@ -12,8 +12,8 @@ class ADS1115:
         if self.__can != None:
             host.RemoveHandle(self.__can)
 
-    def read_adc(self, inputPin):
-        return host.Execute("read_adc(%d)" % inputPin, self.__can)
+    def read_adc(self, inputPin, gain):
+        return host.Execute("read_adc(%d, %d)" % (inputPin, gain), self.__can)
 
 if __name__ == '__main__':
     can = ADS1115(0x49)
